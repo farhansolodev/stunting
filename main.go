@@ -34,7 +34,9 @@ func main() {
 		log.Fatalf("Failed to resolve server addr: %s", err)
 	}
 
-	conn, err := net.ListenUDP(udp, nil)
+	conn, err := net.ListenUDP(udp, &net.UDPAddr{
+		Port: 50002,
+	})
 	if err != nil {
 		log.Fatalf("Failed to listen: %s", err)
 	}
@@ -156,8 +158,9 @@ func listen(conn *net.UDPConn) <-chan []byte {
 	go func() {
 		for {
 			buf := make([]byte, 1024)
-
+			// print("before ReadFromUDP")
 			n, _, err := conn.ReadFromUDP(buf)
+			// print("after ReadFromUDP")
 			if err != nil {
 				close(messages)
 				return
