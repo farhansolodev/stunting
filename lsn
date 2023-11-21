@@ -1,0 +1,8 @@
+#! /usr/bin/bash
+DestinationIP="94.202.240.187"
+
+port=50002
+echo "listening on $port"
+
+# hole punch
+echo "punching listening hole" | nc -u -p 50002 "$DestinationIP" 50001
