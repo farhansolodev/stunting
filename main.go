@@ -23,7 +23,7 @@ const (
 )
 
 func main() {
-	// flag.Parse()
+	flag.Parse()
 
 	srvAddr, err := net.ResolveUDPAddr(udp, *server)
 	if err != nil {
@@ -43,15 +43,11 @@ func main() {
 
 	log.Printf("Listening on %s", conn.LocalAddr())
 
-	// var publicAddr stun.XORMappedAddress
-	peerStr := getPeerAddr()
-	peerAddr, err := net.ResolveUDPAddr(udp, peerStr)
-	if err != nil {
-		log.Panicln("resolve peeraddr:", err)
-	}
+	var publicAddr stun.XORMappedAddress
+	var peerAddr *net.UDPAddr
 
 	messageChan := listen(conn)
-	// var peerAddrChan <-chan string
+	var peerAddrChan <-chan string
 
 	keepalive := time.Tick(timeoutMillis * time.Millisecond)
 	keepaliveMsg := pingMsg
@@ -83,36 +79,36 @@ func main() {
 
 				gotPong = true
 
-			// case stun.IsMessage(message):
-			// 	m := new(stun.Message)
-			// 	m.Raw = message
-			// 	decErr := m.Decode()
-			// 	if decErr != nil {
-			// 		log.Println("decode:", decErr)
-			// 		break
-			// 	}
-			// 	var xorAddr stun.XORMappedAddress
-			// 	if getErr := xorAddr.GetFrom(m); getErr != nil {
-			// 		log.Println("getFrom:", getErr)
-			// 		break
-			// 	}
+			case stun.IsMessage(message):
+				m := new(stun.Message)
+				m.Raw = message
+				decErr := m.Decode()
+				if decErr != nil {
+					log.Println("decode:", decErr)
+					break
+				}
+				var xorAddr stun.XORMappedAddress
+				if getErr := xorAddr.GetFrom(m); getErr != nil {
+					log.Println("getFrom:", getErr)
+					break
+				}
 
-			// 	if publicAddr.String() != xorAddr.String() {
-			// 		log.Printf("My public address: %s\n", xorAddr)
-			// 		publicAddr = xorAddr
+				if publicAddr.String() != xorAddr.String() {
+					log.Printf("My public address: %s\n", xorAddr)
+					publicAddr = xorAddr
 
-			// 		peerAddrChan = getPeerAddr()
-			// 	}
+					peerAddrChan = getPeerAddr()
+				}
 
 			default:
 				log.Panicln("unknown message", message)
 			}
 
-		// case peerStr := <-peerAddrChan:
-		// 	peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
-		// 	if err != nil {
-		// 		log.Panicln("resolve peeraddr:", err)
-		// 	}
+		case peerStr := <-peerAddrChan:
+			peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
+			if err != nil {
+				log.Panicln("resolve peeraddr:", err)
+			}
 
 		case <-keepalive:
 			// Keep NAT binding alive using STUN server or the peer once it's known
@@ -130,7 +126,7 @@ func main() {
 			}
 
 		case <-quit:
-			conn.Close()
+			_ = conn.Close()
 		}
 
 		if quit == nil && gotPong && sentPong {
@@ -140,11 +136,17 @@ func main() {
 	}
 }
 
-func getPeerAddr() string {
-	reader := bufio.NewReader(os.Stdin)
-	log.Println("Enter remote peer address:")
-	peer, _ := reader.ReadString('\n')
-	return strings.Trim(peer, " \r\n")
+func getPeerAddr() <-chan string {
+	result := make(chan string)
+
+	go func() {
+		reader := bufio.NewReader(os.Stdin)
+		log.Println("Enter remote peer address:")
+		peer, _ := reader.ReadString('\n')
+		result <- strings.Trim(peer, " \r\n")
+	}()
+
+	return result
 }
 
 func listen(conn *net.UDPConn) <-chan []byte {
@@ -152,7 +154,9 @@ func listen(conn *net.UDPConn) <-chan []byte {
 	go func() {
 		for {
 			buf := make([]byte, 1024)
+			// print("before ReadFromUDP")
 			n, _, err := conn.ReadFromUDP(buf)
+			// print("after ReadFromUDP")
 			if err != nil {
 				close(messages)
 				return
