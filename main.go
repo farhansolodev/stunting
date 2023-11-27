@@ -14,7 +14,7 @@ import (
 	"github.com/pion/stun/v2"
 )
 
-var server = flag.String("server", "94.130.130.49:3478", "Stun server address") //nolint:gochecknoglobals
+var server = flag.String("server", "94.130.130.49:3478", "Stun server address")
 
 const (
 	udp           = "udp4"
@@ -42,8 +42,6 @@ func main() {
 		_ = conn.Close()
 	}()
 
-	log.Printf("Listening on %s", conn.LocalAddr())
-
 	var publicAddr stun.XORMappedAddress
 	peerAddr, err := net.ResolveUDPAddr(udp, "<placeholder ip>") //! change before running
 	if err != nil {
@@ -51,6 +49,7 @@ func main() {
 	}
 
 	messageChan := listen(conn)
+	log.Printf("Listening on %s", conn.LocalAddr())
 	// var peerAddrChan <-chan string
 
 	keepalive := time.Tick(timeoutMillis * time.Millisecond)
