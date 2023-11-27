@@ -2,17 +2,18 @@ package main
 
 import (
 	"bufio"
-	// "flag"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"strings"
 	"time"
-	// "github.com/pion/stun/v2"
+
+	"github.com/pion/stun/v2"
 )
 
-// var server = flag.String("server", "70.42.198.34:3478", "Stun server address") //nolint:gochecknoglobals
+var server = flag.String("server", "70.42.198.34:3478", "Stun server address") //nolint:gochecknoglobals
 
 const (
 	udp           = "udp4"
@@ -24,10 +25,10 @@ const (
 func main() {
 	// flag.Parse()
 
-	// srvAddr, err := net.ResolveUDPAddr(udp, *server)
-	// if err != nil {
-	// 	log.Fatalf("Failed to resolve server addr: %s", err)
-	// }
+	srvAddr, err := net.ResolveUDPAddr(udp, *server)
+	if err != nil {
+		log.Fatalf("Failed to resolve server addr: %s", err)
+	}
 
 	conn, err := net.ListenUDP(udp, &net.UDPAddr{
 		Port: 50002,
@@ -116,7 +117,7 @@ func main() {
 		case <-keepalive:
 			// Keep NAT binding alive using STUN server or the peer once it's known
 			if peerAddr == nil {
-				// err = sendBindingRequest(conn, srvAddr)
+				err = sendBindingRequest(conn, srvAddr)
 			} else {
 				err = sendStr(keepaliveMsg, conn, peerAddr)
 				if keepaliveMsg == pongMsg {
@@ -164,16 +165,16 @@ func listen(conn *net.UDPConn) <-chan []byte {
 	return messages
 }
 
-// func sendBindingRequest(conn *net.UDPConn, addr *net.UDPAddr) error {
-// 	m := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
+func sendBindingRequest(conn *net.UDPConn, addr *net.UDPAddr) error {
+	m := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
 
-// 	err := send(m.Raw, conn, addr)
-// 	if err != nil {
-// 		return fmt.Errorf("binding: %w", err)
-// 	}
+	err := send(m.Raw, conn, addr)
+	if err != nil {
+		return fmt.Errorf("binding: %w", err)
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
 func send(msg []byte, conn *net.UDPConn, addr *net.UDPAddr) error {
 	_, err := conn.WriteToUDP(msg, addr)
