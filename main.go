@@ -43,7 +43,7 @@ func main() {
 	}()
 
 	var publicAddr stun.XORMappedAddress
-	peerAddr, err := net.ResolveUDPAddr(udp, "<placeholder ip>") //! change before running
+	peerAddr, err := net.ResolveUDPAddr(udp, "20.192.22.22:50002") //! change before running
 	if err != nil {
 		log.Panicln("resolve peeraddr:", err)
 	}
