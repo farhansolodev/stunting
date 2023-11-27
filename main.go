@@ -1,19 +1,20 @@
 package main
 
 import (
-	"bufio"
+	// "bufio"
 	"flag"
 	"fmt"
 	"log"
 	"net"
-	"os"
-	"strings"
+
+	// "os"
+	// "strings"
 	"time"
 
 	"github.com/pion/stun/v2"
 )
 
-var server = flag.String("server", "70.42.198.34:3478", "Stun server address") //nolint:gochecknoglobals
+var server = flag.String("server", "94.130.130.49:3478", "Stun server address") //nolint:gochecknoglobals
 
 const (
 	udp           = "udp4"
@@ -44,10 +45,13 @@ func main() {
 	log.Printf("Listening on %s", conn.LocalAddr())
 
 	var publicAddr stun.XORMappedAddress
-	var peerAddr *net.UDPAddr
+	peerAddr, err := net.ResolveUDPAddr(udp, "<placeholder ip>")
+	if err != nil {
+		log.Panicln("resolve peeraddr:", err)
+	}
 
 	messageChan := listen(conn)
-	var peerAddrChan <-chan string
+	// var peerAddrChan <-chan string
 
 	keepalive := time.Tick(timeoutMillis * time.Millisecond)
 	keepaliveMsg := pingMsg
@@ -97,18 +101,18 @@ func main() {
 					log.Printf("My public address: %s\n", xorAddr)
 					publicAddr = xorAddr
 
-					peerAddrChan = getPeerAddr()
+					// peerAddrChan = getPeerAddr()
 				}
 
 			default:
 				log.Panicln("unknown message", message)
 			}
 
-		case peerStr := <-peerAddrChan:
-			peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
-			if err != nil {
-				log.Panicln("resolve peeraddr:", err)
-			}
+		// case peerStr := <-peerAddrChan:
+		// 	peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
+		// 	if err != nil {
+		// 		log.Panicln("resolve peeraddr:", err)
+		// 	}
 
 		case <-keepalive:
 			// Keep NAT binding alive using STUN server or the peer once it's known
@@ -136,18 +140,18 @@ func main() {
 	}
 }
 
-func getPeerAddr() <-chan string {
-	result := make(chan string)
+// func getPeerAddr() <-chan string {
+// 	result := make(chan string)
 
-	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		log.Println("Enter remote peer address:")
-		peer, _ := reader.ReadString('\n')
-		result <- strings.Trim(peer, " \r\n")
-	}()
+// 	go func() {
+// 		reader := bufio.NewReader(os.Stdin)
+// 		log.Println("Enter remote peer address:")
+// 		peer, _ := reader.ReadString('\n')
+// 		result <- strings.Trim(peer, " \r\n")
+// 	}()
 
-	return result
-}
+// 	return result
+// }
 
 func listen(conn *net.UDPConn) <-chan []byte {
 	messages := make(chan []byte)
