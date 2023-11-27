@@ -42,11 +42,12 @@ func main() { // nolint:gocognit
 	messageChan := listen(conn)
 	log.Printf("Listening on %s", conn.LocalAddr())
 
-	// send binding request to STUN server
+	// get *net.UDPAddr of STUN server address string
 	srvAddr, err := net.ResolveUDPAddr(udp, *server)
 	if err != nil {
 		log.Panicln("Failed to resolve server addr:", err)
 	}
+	// send binding request to STUN server
 	if sendBindingRequest(conn, srvAddr) != nil {
 		log.Panicln("sendBindingRequest:", err)
 	}
@@ -57,15 +58,15 @@ func main() { // nolint:gocognit
 	gotPong := false
 	sentPong := false
 
+	// start sending messages to this channel every few ms
 	keepalive := time.Tick(timeoutMillis * time.Millisecond)
 	keepaliveMsg := pingMsg
 
-	var quit <-chan time.Time
-
 	for {
-		if quit == nil && gotPong && sentPong {
-			log.Println("Success! Quitting in two seconds.")
-			quit = time.After(2 * time.Second)
+		// if sent and received the same "pong" message,
+		if gotPong && sentPong {
+			log.Println("Success! Quitting.")
+			conn.Close()
 		}
 
 		select {
@@ -126,11 +127,9 @@ func main() { // nolint:gocognit
 		// 	}
 
 		case <-keepalive:
-			print("keepalive time")
 			if peerAddr == nil {
 				continue
 			}
-			print("keepaliveMsgSent")
 			// Keep NAT binding alive using the peer address
 			err = sendStr(keepaliveMsg, conn, peerAddr)
 			if keepaliveMsg == pongMsg {
@@ -140,9 +139,6 @@ func main() { // nolint:gocognit
 			if err != nil {
 				log.Panicln("keepalive:", err)
 			}
-
-		case <-quit:
-			conn.Close()
 		}
 	}
 }
