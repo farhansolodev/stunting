@@ -52,17 +52,22 @@ func main() { // nolint:gocognit
 	}
 
 	var publicAddr stun.XORMappedAddress
-	// var peerAddr *net.UDPAddr
+	var peerAddr *net.UDPAddr
 
-	// gotPong := false
-	// sentPong := false
+	gotPong := false
+	sentPong := false
 
-	// keepalive := time.Tick(timeoutMillis * time.Millisecond)
-	// keepaliveMsg := pingMsg
+	keepalive := time.Tick(timeoutMillis * time.Millisecond)
+	keepaliveMsg := pingMsg
 
 	var quit <-chan time.Time
 
 	for {
+		if quit == nil && gotPong && sentPong {
+			log.Println("Success! Quitting in two seconds.")
+			quit = time.After(2 * time.Second)
+		}
+
 		select {
 		case message, ok := <-messageChan:
 			if !ok {
@@ -70,19 +75,17 @@ func main() { // nolint:gocognit
 			}
 
 			switch {
-			// case string(message) == pingMsg:
-			// 	keepaliveMsg = pongMsg
+			case string(message) == pingMsg:
+				keepaliveMsg = pongMsg
 
-			// case string(message) == pongMsg:
-			// 	if !gotPong {
-			// 		log.Println("Received pong message.")
-			// 	}
-
-			// 	// One client may skip sending ping if it receives
-			// 	// a ping message before knowning the peer address.
-			// 	keepaliveMsg = pongMsg
-
-			// 	gotPong = true
+			case string(message) == pongMsg:
+				if !gotPong {
+					log.Println("Received pong message.")
+				}
+				// One client may skip sending ping if it receives
+				// a ping message before knowning the peer address.
+				keepaliveMsg = pongMsg
+				gotPong = true
 
 			case stun.IsMessage(message):
 				m := new(stun.Message)
@@ -101,7 +104,15 @@ func main() { // nolint:gocognit
 				if publicAddr.String() != xorAddr.String() {
 					log.Printf("My public address: %s\n", xorAddr)
 					publicAddr = xorAddr
-					quit = time.After(0)
+
+					if peerAddr == nil {
+						// get peer address from user and set it
+						addr, err := net.ResolveUDPAddr(udp, getPeerAddr())
+						if err != nil {
+							log.Panicln("resolve peeraddr:", err)
+						}
+						peerAddr = addr
+					}
 				}
 
 			default:
@@ -114,34 +125,25 @@ func main() { // nolint:gocognit
 		// 		log.Panicln("resolve peeraddr:", err)
 		// 	}
 
-		// case <-keepalive:
-		// 	// Keep NAT binding alive using the peer address
-		// 	err = sendStr(keepaliveMsg, conn, peerAddr)
-		// 	if keepaliveMsg == pongMsg {
-		// 		sentPong = true
-		// 	}
+		case <-keepalive:
+			print("keepalive time")
+			if peerAddr == nil {
+				continue
+			}
+			print("keepaliveMsgSent")
+			// Keep NAT binding alive using the peer address
+			err = sendStr(keepaliveMsg, conn, peerAddr)
+			if keepaliveMsg == pongMsg {
+				sentPong = true
+			}
 
-		// 	if err != nil {
-		// 		log.Panicln("keepalive:", err)
-		// 	}
+			if err != nil {
+				log.Panicln("keepalive:", err)
+			}
 
 		case <-quit:
 			conn.Close()
 		}
-
-		// if peerAddr == nil {
-		// 	// get peer address from user and set it
-		// 	addr, err := net.ResolveUDPAddr(udp, getPeerAddr())
-		// 	if err != nil {
-		// 		log.Panicln("resolve peeraddr:", err)
-		// 	}
-		// 	peerAddr = addr
-		// }
-
-		// if quit == nil && gotPong && sentPong {
-		// 	log.Println("Success! Quitting in two seconds.")
-		// 	quit = time.After(2 * time.Second)
-		// }
 	}
 }
 
