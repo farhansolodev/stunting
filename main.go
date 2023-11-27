@@ -45,7 +45,7 @@ func main() {
 	log.Printf("Listening on %s", conn.LocalAddr())
 
 	var publicAddr stun.XORMappedAddress
-	peerAddr, err := net.ResolveUDPAddr(udp, "<placeholder ip>")
+	peerAddr, err := net.ResolveUDPAddr(udp, "<placeholder ip>") //! change before running
 	if err != nil {
 		log.Panicln("resolve peeraddr:", err)
 	}
