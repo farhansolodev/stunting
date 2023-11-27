@@ -118,6 +118,7 @@ func main() {
 			if peerAddr == nil {
 				err = sendBindingRequest(conn, srvAddr)
 			} else {
+				println("sending keepalive:", keepaliveMsg)
 				err = sendStr(keepaliveMsg, conn, peerAddr)
 				if keepaliveMsg == pongMsg {
 					sentPong = true
