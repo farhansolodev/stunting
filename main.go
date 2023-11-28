@@ -9,9 +9,6 @@ import (
 	"net"
 	"os"
 	"strings"
-
-	// "os"
-	// "strings"
 	"time"
 
 	"github.com/pion/stun/v2"
