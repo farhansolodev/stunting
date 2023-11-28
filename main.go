@@ -17,8 +17,6 @@ import (
 	"github.com/pion/stun/v2"
 )
 
-// var server = flag.String("server", "94.130.130.49:3478", "Stun server address")
-
 const (
 	udp           = "udp4"
 	pingMsg       = "ping"
