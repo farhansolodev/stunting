@@ -12,7 +12,7 @@ import (
 
 	// "os"
 	// "strings"
-	"time"
+	// "time"
 
 	"github.com/pion/stun/v2"
 )
@@ -26,122 +26,7 @@ const (
 	timeoutMillis = 500
 )
 
-func main() { // nolint:gocognit
-	flag.Parse()
-
-	// allocate a local UDP socket
-	conn, err := net.ListenUDP(udp, &net.UDPAddr{
-		Port: 50002,
-	})
-	if err != nil {
-		log.Fatalf("Failed to listen: %s", err)
-	}
-	defer conn.Close()
-
-	// listen for incoming messages on the socket
-	messageChan := listen(conn)
-	log.Printf("Listening on %s", conn.LocalAddr())
-
-	// get *net.UDPAddr of STUN server address string
-	srvAddr, err := net.ResolveUDPAddr(udp, *server)
-	if err != nil {
-		log.Panicln("Failed to resolve server addr:", err)
-	}
-	// send binding request to STUN server
-	if sendBindingRequest(conn, srvAddr) != nil {
-		log.Panicln("sendBindingRequest:", err)
-	}
-
-	var publicAddr stun.XORMappedAddress
-	var peerAddr *net.UDPAddr
-
-	gotPong := false
-	sentPong := false
-
-	// start sending messages to this channel every few ms
-	keepalive := time.Tick(timeoutMillis * time.Millisecond)
-	keepaliveMsg := pingMsg
-
-	for {
-		// if sent and received the same "pong" message,
-		if gotPong && sentPong {
-			log.Println("Success! Quitting.")
-			conn.Close()
-		}
-
-		select {
-		case message, ok := <-messageChan:
-			if !ok {
-				return
-			}
-
-			switch {
-			case string(message) == pingMsg:
-				keepaliveMsg = pongMsg
-
-			case string(message) == pongMsg:
-				if !gotPong {
-					log.Println("Received pong message.")
-				}
-				// One client may skip sending ping if it receives
-				// a ping message before knowning the peer address.
-				keepaliveMsg = pongMsg
-				gotPong = true
-
-			case stun.IsMessage(message):
-				m := new(stun.Message)
-				m.Raw = message
-				decErr := m.Decode()
-				if decErr != nil {
-					log.Println("decode:", decErr)
-					break
-				}
-				var xorAddr stun.XORMappedAddress
-				if getErr := xorAddr.GetFrom(m); getErr != nil {
-					log.Println("getFrom:", getErr)
-					break
-				}
-
-				if publicAddr.String() != xorAddr.String() {
-					log.Printf("My public address: %s\n", xorAddr)
-					publicAddr = xorAddr
-
-					if peerAddr == nil {
-						// get peer address from user and set it
-						addr, err := net.ResolveUDPAddr(udp, getPeerAddr())
-						if err != nil {
-							log.Panicln("resolve peeraddr:", err)
-						}
-						peerAddr = addr
-					}
-				}
-
-			default:
-				log.Panicln("unknown message", message)
-			}
-
-		// case peerStr := <-peerAddrChan:
-		// 	peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
-		// 	if err != nil {
-		// 		log.Panicln("resolve peeraddr:", err)
-		// 	}
-
-		case <-keepalive:
-			if peerAddr == nil {
-				continue
-			}
-			// Keep NAT binding alive using the peer address
-			err = sendStr(keepaliveMsg, conn, peerAddr)
-			if keepaliveMsg == pongMsg {
-				sentPong = true
-			}
-
-			if err != nil {
-				log.Panicln("keepalive:", err)
-			}
-		}
-	}
-}
+func main() {}
 
 func getPeerAddr() string {
 	reader := bufio.NewReader(os.Stdin)
