@@ -9,12 +9,7 @@ import (
 	"net"
 	"os"
 	"strings"
-
-	// "os"
-	// "strings"
 	"time"
-
-	"github.com/pion/stun/v2"
 )
 
 const (
@@ -124,17 +119,6 @@ func listen(conn *net.UDPConn) <-chan []byte {
 		}
 	}()
 	return messages
-}
-
-func sendBindingRequest(conn *net.UDPConn, addr *net.UDPAddr) error {
-	m := stun.MustBuild(stun.TransactionID, stun.BindingRequest)
-
-	err := send(m.Raw, conn, addr)
-	if err != nil {
-		return fmt.Errorf("binding: %w", err)
-	}
-
-	return nil
 }
 
 func send(msg []byte, conn *net.UDPConn, addr *net.UDPAddr) error {
