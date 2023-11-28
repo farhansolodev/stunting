@@ -17,7 +17,7 @@ import (
 	"github.com/pion/stun/v2"
 )
 
-var server = flag.String("server", "94.130.130.49:3478", "Stun server address")
+// var server = flag.String("server", "94.130.130.49:3478", "Stun server address")
 
 const (
 	udp           = "udp4"
@@ -42,18 +42,11 @@ func main() { // nolint:gocognit
 	messageChan := listen(conn)
 	log.Printf("Listening on %s", conn.LocalAddr())
 
-	// get *net.UDPAddr of STUN server address string
-	srvAddr, err := net.ResolveUDPAddr(udp, *server)
+	// get peer address from user
+	peerAddr, err := net.ResolveUDPAddr(udp, getPeerAddr())
 	if err != nil {
-		log.Panicln("Failed to resolve server addr:", err)
+		log.Panicln("resolve peeraddr:", err)
 	}
-	// send binding request to STUN server
-	if sendBindingRequest(conn, srvAddr) != nil {
-		log.Panicln("sendBindingRequest:", err)
-	}
-
-	var publicAddr stun.XORMappedAddress
-	var peerAddr *net.UDPAddr
 
 	gotPong := false
 	sentPong := false
@@ -88,48 +81,15 @@ func main() { // nolint:gocognit
 				keepaliveMsg = pongMsg
 				gotPong = true
 
-			case stun.IsMessage(message):
-				m := new(stun.Message)
-				m.Raw = message
-				decErr := m.Decode()
-				if decErr != nil {
-					log.Println("decode:", decErr)
-					break
-				}
-				var xorAddr stun.XORMappedAddress
-				if getErr := xorAddr.GetFrom(m); getErr != nil {
-					log.Println("getFrom:", getErr)
-					break
-				}
-
-				if publicAddr.String() != xorAddr.String() {
-					log.Printf("My public address: %s\n", xorAddr)
-					publicAddr = xorAddr
-
-					if peerAddr == nil {
-						// get peer address from user and set it
-						addr, err := net.ResolveUDPAddr(udp, getPeerAddr())
-						if err != nil {
-							log.Panicln("resolve peeraddr:", err)
-						}
-						peerAddr = addr
-					}
-				}
-
 			default:
 				log.Panicln("unknown message", message)
 			}
-
-		// case peerStr := <-peerAddrChan:
-		// 	peerAddr, err = net.ResolveUDPAddr(udp, peerStr)
-		// 	if err != nil {
-		// 		log.Panicln("resolve peeraddr:", err)
-		// 	}
 
 		case <-keepalive:
 			if peerAddr == nil {
 				continue
 			}
+
 			// Keep NAT binding alive using the peer address
 			err = sendStr(keepaliveMsg, conn, peerAddr)
 			if keepaliveMsg == pongMsg {
