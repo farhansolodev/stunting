@@ -26,6 +26,7 @@ const (
 	timeoutMillis = 500
 )
 
+// -a test
 func main() { // nolint:gocognit
 	flag.Parse()
 
